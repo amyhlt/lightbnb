@@ -72,7 +72,17 @@ exports.addUser = addUser;
  * @return {Promise<[{}]>} A promise to the reservations.
  */
 const getAllReservations = function(guest_id, limit = 10) {
-  return getAllProperties(null, 2);
+  const queryString =`SElECT reservations.*
+                      FROM users
+                      JOIN reservations ON reservations.guest_id = users.id
+                      WHERE reservations.guest_id=$1
+                      LIMIT $2`;
+  const values=[guest_id,limit];
+  return pool
+           .query(queryString,values)
+           .then(res=>res.rows)
+           .catch(err=>console.log(err.stack));
+      
 }
 exports.getAllReservations = getAllReservations;
 
@@ -85,7 +95,11 @@ exports.getAllReservations = getAllReservations;
  * @return {Promise<[{}]>}  A promise to the properties.
  */
  const getAllProperties = (options, limit = 10) => {
-   const queryString =`SELECT * FROM properties LIMIT $1`;
+   const queryString =`SELECT properties.*,avg(property_reviews.rating) AS average_rating
+   FROM properties
+   JOIN property_reviews on properties.id=property_reviews.property_id
+   GROUP BY properties.id
+          LIMIT $1`;
   return pool
     .query(queryString, [limit])
     .then((res) => res.rows)
@@ -103,46 +117,46 @@ exports.getAllProperties = getAllProperties;
  */
 const addProperty = function(property) {
   const queryString = `
-  INSERT INTO users (
+  INSERT INTO properties (
     owner_id,
-    Title,
+    title,
     description,
     thumbnail_photo_url,
-    cover_photo_url ,
+    cover_photo_url,
     cost_per_night,
-    parking_spaces,
-    number_of_bathrooms,
-    numberf_bedrooms ,
-    country,
     street,
     city,
     province,
-    post_code ,
+    post_code,
+    country,
+    parking_spaces,
+    number_of_washrooms,
+    number_of_bedrooms,
     active)
-  VALUES ($1, $2, $3,$4,$5,$6,$7,$8,$9,$10,$11.$12,$13,$14,$15)
+  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
   RETURNING *;
 `;
   const values=[
-    property.ower_id,
+    property.owner_id,
     property.title,
     property.description,
     property.thumbnail_photo_url,
     property.cover_photo_url,
     property.cost_per_night,
-    property.parking_spaces,
-    property.number_of_bathrooms,
-    property.numberf_bedrooms,
-    property.country,
     property.street,
     property.city,
     property.province,
     property.post_code,
-    property.active
+    property.country,
+    property.parking_spaces,
+    property.number_of_bathrooms,
+    property.number_of_bedrooms,
+    true
 ];
 
   return pool
          .query(queryString,values)
-         .then(res => res.rows[0])
+         .then(resp => resp.rows[0])
          .catch((err) => err.message);
 }
 exports.addProperty = addProperty;
