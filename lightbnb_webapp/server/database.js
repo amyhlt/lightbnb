@@ -50,17 +50,17 @@ exports.getUserWithId = getUserWithId;
  * @param {{name: string, password: string, email: string}} user
  * @return {Promise<{}>} A promise to the user.
  */
-const addUser =  function(user) {
+const addUser = function (user) {
   const queryString = `
   INSERT INTO users (name, email, password)
   VALUES ($1, $2, $3)
   RETURNING *;
 `;
-  const values=[user.name, user.email, user.password];
+  const values = [user.name, user.email, user.password];
   return pool
-         .query(queryString,values)
-         .then(res => res.rows[0])
-         .catch((err) => err.message);
+    .query(queryString, values)
+    .then(res => res.rows[0])
+    .catch((err) => err.message);
 }
 exports.addUser = addUser;
 
@@ -71,17 +71,21 @@ exports.addUser = addUser;
  * @param {string} guest_id The id of the user.
  * @return {Promise<[{}]>} A promise to the reservations.
  */
-const getAllReservations = function(guest_id, limit = 10) {
-  const queryString =`SElECT reservations.*
-                      FROM users
-                      JOIN reservations ON reservations.guest_id = users.id
-                      WHERE reservations.guest_id=$1
-                      LIMIT $2`;
-  const values=[guest_id,limit];
+const getAllReservations = function (guest_id, limit = 10) {
+  const queryString = ` 
+  SELECT properties.*,reservations.*,avg(property_reviews.rating) AS average_rating
+  FROM reservations
+  JOIN properties ON properties.id = reservations.property_id
+  JOIN property_reviews ON properties.id = property_reviews.property_id
+   WHERE reservations.guest_id = $1 AND end_date < now()::date
+   GROUP BY properties.id, reservations.id
+   ORDER BY reservations.start_date
+   LIMIT $2;`
+  const values = [guest_id, limit];
   return pool
-           .query(queryString,values)
-           .then(res=>res.rows)
-           .catch(err=>console.log(err.stack));
+    .query(queryString, values)
+    .then(res => res.rows)
+    .catch(err => console.log(err.stack));
       
 }
 exports.getAllReservations = getAllReservations;
